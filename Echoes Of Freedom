@@ -1,0 +1,202 @@
+#include <iostream>
+#include <cstdlib>
+#include <conio.h>
+#include <cctype>
+#include <chrono>
+#include <thread>
+#include <ctime>
+#include <string>
+using namespace std;
+const int mapSizeX = 7, mapSizeY = 5; //defines size of array
+int startX = 1,startY = 1,posX = 1, posY = 1, newX = 0, newY = 0; //defines original,current and next positions, horizontally and vertically
+int playerATK = 12, playerHP = 10, playerSP = 25;
+string moveOption; //global string
+string map1[mapSizeY][mapSizeX] = { //global array to design map
+	{"*","*","*","*","*","*","*"},
+	{"*"," "," ","*"," "," ","*"},
+	{"*"," "," ","*"," "," ","*"},
+	{"*"," "," "," "," "," ","*"},
+	{"*","*","*","*","*","*","*"}
+};
+void toLowerCase(string& str) { //to make the input in lowercase
+	for (char& c : str) {
+		c = tolower(c);
+	}
+}
+void printMap(){
+	for (int i = 0; i < mapSizeY; i++) { //prints the map using an array
+		for (int j = 0; j < mapSizeX; j++) {
+			cout << map1[i][j];
+		}
+		cout << endl;
+	}
+}
+bool battle(int enemyATK = 8, int enemyHP = 25, int enemySP = 15, string enemyName = "enemy"){
+	int maxEnemySP = enemySP, maxPlayerSP = playerSP,maxPlayerHP = playerHP; //saving original SP and HP values
+	string action, endBattle,enemyAction,previousEnemyAction;
+	string enemyActionMenu[3] = { "attack","defend","recharge" }; //random attack patterns for enemy
+	bool enemyVulnerable = false; //determines if the enemy is vulnerable
+	srand(time(0));
+	cout << "You have encountered an enemy!\n";
+	while (playerHP >= 0 && enemyHP >= 0) { //loop till end of battle
+		if (playerHP <= 0) {
+			cout << "\t\tYou died! but it's not over yet\n\t\t   Stay D E T E R M I N E D"
+				<< "\n\nEnter x to continue: "; cin >> endBattle;
+			playerHP = maxPlayerHP; playerSP = maxPlayerSP;
+			map1[posY][posX] = " ";
+			if (endBattle == "x")
+				return false;
+		}
+		cout << "Your HP: " << playerHP << "\tYour SP: " << playerSP << endl;
+		if (enemySP == maxEnemySP) {
+			enemyAction = enemyActionMenu[rand() % 2];
+		}
+		else {
+			enemyAction = enemyActionMenu[rand() % 3];
+		}
+		do {
+			cout << "Your turn!\n-Attack\t-Defend\t-Recharge\n"
+				<< "Choose your action: "; cin >> action;
+			toLowerCase(action);
+		} while ((action != "attack") && (action != "defend") && (action != "recharge")); //loop till appropriate input
+		if (action == "attack") {
+			if (playerSP <= 0) {
+				cout << "Unable to attack! You have run out of SP.\n";
+			}
+			else {
+				if(previousEnemyAction == "defend"){
+					if (enemyVulnerable == true) { //code for counter attack
+						cout << "Your counter attack was successful! " << enemyName << " was damaged.\n";
+						enemyHP = enemyHP - playerATK;
+						playerSP = -3;
+						enemyVulnerable = false;
+					}
+					else {
+						cout << enemyName << " defended against your attack! You're vulnerable.\n";
+						this_thread::sleep_for(chrono::seconds(4));
+						system("cls");
+						cout << "Enemy's turn!\n";
+						cout << enemyName << " landed a hit on you!\nYou have taken damage.\n";
+						playerHP = playerHP - enemyATK;
+						enemySP -= 3;
+						this_thread::sleep_for(chrono::seconds(4));
+						system("cls");
+						previousEnemyAction = "arbitrary";
+						continue;
+					}
+				}
+				else {
+					cout << "\nYou chose to attack! " << enemyName << " was damaged.\n";
+					enemyHP = enemyHP - playerATK;
+				}
+				playerSP-=5;
+			}
+		}
+		else if (action == "defend") {
+			cout << "\nYou chose to defend!Your stance has changed.\n";
+		}
+		else if (action == "recharge") {
+			cout << "\nYou chose to recharge!Your SP has replenished.\n";
+			if (playerSP < maxPlayerSP) {
+				playerSP+=7;
+				if (playerSP > maxPlayerSP){ //makes sure SP doesnt go higher than the max
+					playerSP = maxPlayerSP;
+				}
+			}
+		}
+		if (enemyHP <= 0) {
+			playerHP = maxPlayerHP + 5;
+			playerSP = maxPlayerSP + 5;
+			playerATK += 2;
+			cout << "\nYou have defeated the enemy!\n" 
+				<< "Updated Player Stats:\nHP: " << playerHP << "\tSP: " << playerSP << endl
+				<< "\n\nEnter x to continue: "; cin >> endBattle;
+			if (endBattle == "x")
+				return true;
+		}
+		this_thread::sleep_for(chrono::seconds(4));
+		system("cls");
+		cout << "Enemy's turn!\n";
+		if (enemyAction == "attack") {
+			if (action == "defend") {
+				cout << "You successfully defended against " << enemyName <<  " attack!\nThe enemy looks furious.\n";
+				enemyVulnerable = true;
+			}
+			else {
+				cout << enemyName << " landed a hit on you!\nYou have taken damage.\n";
+				playerHP = playerHP - enemyATK;
+			}
+			enemySP-=5;
+		}
+		else if (enemyAction == "recharge" || enemyAction == "defend") {
+			cout << enemyName << " seems to be plotting something...\n";
+			if (enemyAction == "recharge") {
+				enemySP += 7;
+				if (enemySP > maxEnemySP) {
+					enemySP = maxEnemySP;
+				}
+			}
+		}
+		this_thread::sleep_for(chrono::seconds(4));
+		system("cls");
+		previousEnemyAction = enemyAction;
+	}
+}
+void movement() {
+	cout << "Use WASD keys to move:\n";
+	char moveOption = _getch(); // capture single key press without Enter
+	if (moveOption == 'w' || moveOption == 'W') {
+		newY = posY - 1;
+		if (map1[newY][posX] != "*") {
+			map1[posY][posX] = " "; //replaces X with a space
+			posY = newY;            //replaces newY with posY if valid 
+			map1[posY][posX] = "X"; //replaces a space with an X
+		}
+	}
+	else if (moveOption == 's' || moveOption == 'S') {
+		newY = posY + 1;
+		if (map1[newY][posX] != "*") {
+			map1[posY][posX] = " ";
+			posY = newY;
+			map1[posY][posX] = "X";
+		}
+	}
+	else if (moveOption == 'd' || moveOption == 'D') {
+		newX = posX + 1;
+		if (map1[posY][newX] != "*") {
+			map1[posY][posX] = " ";
+			posX = newX;
+			map1[posY][posX] = "X";
+		}
+	}
+	else if (moveOption == 'a' || moveOption == 'A'){
+		newX = posX - 1;
+		if (map1[posY][newX] != "*") {
+			map1[posY][posX] = " ";
+			posX = newX;
+			map1[posY][posX] = "X";
+		}
+	}
+}
+int main() {
+	int i = 0;
+	bool victory;
+	map1[posY][posX] = "X";
+	while (true) {     //infinite loop for the next movement
+		system("cls"); //clears screen before next iteration
+		if (i == 0) { //condition makes sure the battle only happens once in case of victory
+			if (map1[3][3] == "X") { //coordinates of the enemy
+				victory = battle(10,25,12,"Gwyn");
+				if (victory == true) {
+					i++;
+				}
+				else if (victory == false) {
+					posY = startY; posX = startX;
+					map1[posY][posX] = "X";      //putting cursor in starting position after loss
+				}
+			}
+		}
+		printMap();
+		movement();
+	}
+}
