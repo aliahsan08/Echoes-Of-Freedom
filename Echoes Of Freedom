@@ -1,202 +1,1432 @@
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <iostream>
 #include <cstdlib>
 #include <conio.h>
 #include <cctype>
-#include <chrono>
-#include <thread>
 #include <ctime>
 #include <string>
+#include <vector>
+#include <thread>
+#include <sstream>
 using namespace std;
-const int mapSizeX = 7, mapSizeY = 5; //defines size of array
-int startX = 1,startY = 1,posX = 1, posY = 1, newX = 0, newY = 0; //defines original,current and next positions, horizontally and vertically
-int playerATK = 12, playerHP = 10, playerSP = 25;
-string moveOption; //global string
-string map1[mapSizeY][mapSizeX] = { //global array to design map
-	{"*","*","*","*","*","*","*"},
-	{"*"," "," ","*"," "," ","*"},
-	{"*"," "," ","*"," "," ","*"},
-	{"*"," "," "," "," "," ","*"},
-	{"*","*","*","*","*","*","*"}
+const string playerCursor = " X ";
+const int mapSizeY = 8, mapSizeX = 21;
+int level = 2;
+int bossBattleCounter = 0;
+int cutsceneCounter = 0;
+bool skipBattle = false;
+void premise(sf::Sound& premiseSound);
+void showTitleScreen(sf::Sound& titleSound) {
+	// Create a fullscreen SFML window
+	sf::RenderWindow window(sf::VideoMode::getDesktopMode(), "Echoes of Freedom", sf::Style::Fullscreen);
+
+	// Load font
+	sf::Font font;
+	if (!font.loadFromFile("fonts/PressStart2P.ttf")) {
+		cerr << "Error loading font!" << endl;
+		exit(-1);
+	}
+
+	// Title text
+	sf::Text title("ECHOES OF FREEDOM", font, 100);
+	title.setFillColor(sf::Color::Red);
+	title.setStyle(sf::Text::Bold);
+	title.setPosition(
+		window.getSize().x / 2 - title.getGlobalBounds().width / 2,
+		window.getSize().y / 4
+	);
+
+	// Subtitle text
+	sf::Text subtitle("A Tale of Defiance", font, 50);
+	subtitle.setFillColor(sf::Color::White);
+	subtitle.setPosition(
+		window.getSize().x / 2 - subtitle.getGlobalBounds().width / 2,
+		window.getSize().y / 2
+	);
+
+	// Instructions text
+	sf::Text instructions("Double click to continue", font, 40);
+	instructions.setFillColor(sf::Color::White);
+	instructions.setPosition(
+		window.getSize().x / 2 - instructions.getGlobalBounds().width / 2,
+		window.getSize().y - window.getSize().y / 4
+	);
+
+	// Play title audio
+	titleSound.setLoop(true);
+	titleSound.play();
+
+	// Main loop for the title screen
+	while (window.isOpen()) {
+		sf::Event event;
+
+		// Poll events
+		while (window.pollEvent(event)) {
+			if (event.type == sf::Event::Closed) {
+				window.close();
+				exit(0); // Exit the game if the window is closed
+			}
+
+			// Check for mouse click
+			if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+				titleSound.stop(); // Stop the audio
+				window.close();    // Close the title screen
+				return;            // Exit the function
+			}
+		}
+
+		// Clear the window and draw the title screen
+		window.clear(sf::Color::Black);
+		window.draw(title);
+		window.draw(subtitle);
+		window.draw(instructions);
+		window.display();
+	}
+}
+
+
+typedef struct Character
+{
+	string name;
+	int SP, XP, maxHP, maxSP, level;
+	float HP, ATK;
+	bool isDefending, isVulnerable;
+
+	// Initialize a character
+	Character(string n, float h, float a, int s, int x, int L) : name(n), HP(h), ATK(a), SP(s), maxHP(h), maxSP(s), XP(x), level(L), isDefending(false), isVulnerable(false) {}
+}ch;
+typedef struct LevelItems { //struct for each level items etc
+	int keys, enemy, doors, potions;
+	LevelItems(int k, int e, int d, int p) : keys(k), enemy(e), doors(d), potions(p) {}
+}LI;
+void attack(Character& attacker, Character& target);
+void recharge(Character& character);
+void defend(Character& defender);
+void heal(Character& player);
+void toLowerCase(string& str);
+void levelUpSystem();
+int XPrelativetoHP(int enemyXP);
+bool battle(Character& player, Character& enemy);
+int findItem(const string& itemName);
+void addItem(const string& itemName, int quantity);
+void removeItem(const string& itemName, int quantity);
+void displayInventory();
+void printMap();
+void movement();
+void typewriter(string text, int n = 70);
+void premise();
+void level0();
+void level1();
+void level2();
+void level3();
+void level4();
+bool bossBattle();
+void cutscenes();
+void enemyDescription(Character enemy);
+
+const int ROWS = 5, COLUMNS = 3;
+
+string inventory[ROWS][COLUMNS] =
+{
+	{"Key", "0", "Used to open the doors"},
+	{"Health Potion", "0", "Used to recover 50% of health"},
+	{"Necklace","1","A weird looking necklace you found in your prison"},
+	{"xxx","xxx","xxx"},
+	{"xxx","xxx","xxx"}
 };
-void toLowerCase(string& str) { //to make the input in lowercase
-	for (char& c : str) {
-		c = tolower(c);
+
+int startX, startY, posX, posY;//defines original,current horizontally and vertically
+vector<ch> bosses =
+{
+	ch("Shahmaran",300,40,300,400,1),
+	ch("Sila",600,100,300,800,1),
+	ch("Marid",800,130,300,1100,1),
+	ch("Karitha",1000,170,300,3000,1),
+	ch("Sahm al Shar",15000,3000,3500,50000,1)
+};
+vector<ch> enemies =
+{
+	ch("Smeogol", 200, 30, 200,100,1),
+	ch("NasNaas", 300, 70, 250,200,1),
+	ch("Shadh", 600, 120, 250,400,1),
+	ch("Karkadann", 800, 180, 300,500,1),
+	ch("King's Knight", 1000, 350, 200,500,1)
+};
+ch player = ch("Player", 250, 60, 300, 0, 1);
+LI levelitems0 = LI(0, 0, 0, 0);
+LI levelitems1 = LI(0, 0, 0, 0);
+LI levelitems2 = LI(0, 0, 0, 0);
+LI levelitems3 = LI(0, 0, 0, 0);
+LI levelitems4 = LI(0, 0, 0, 0);
+int levelUpXPRequirements[20] = { 0 , 200, 450, 750, 1100, 1500, 1950, 2450, 3000, 3600, 4250, 4950, 5700, 6500, 7350, 8250, 9200, 10200, 11250, 12350 }; //total XP needed to reach a certain level
+// Function to randomly select an enemy from the vector
+ch selectRandomEnemy(int enemyChoices, int enemyNum)
+{
+	srand(time(0));  // Seed the random number generator
+	int randomIndex = (rand() % enemyChoices) + enemyNum;  // Random index in the enemy pool
+	return enemies[randomIndex];  // Return the selected enemy
+}
+
+
+// Add these global variables for managing audio
+sf::SoundBuffer mainBuffer, bossBuffers[5];
+sf::Sound mainSound, bossSounds[5];
+
+void initializeAudio() {
+	// Load the main audio
+	if (!mainBuffer.loadFromFile("abc.ogg")) {
+		cerr << "Failed to load main audio." << endl;
+		exit(1);
+	}
+	mainSound.setBuffer(mainBuffer);
+	mainSound.setLoop(true);
+	mainSound.play(); // Play main audio at the start of the game
+
+	// Load boss battle audios
+	string bossAudioFiles[5] = { "BossBattle0.ogg", "BossBattle1.ogg", "BossBattle2.ogg", "BossBattle3.ogg", "BossBattle4.ogg" };
+	for (int i = 0; i < 5; i++) {
+		if (!bossBuffers[i].loadFromFile(bossAudioFiles[i])) {
+			cerr << "Failed to load boss audio: " << bossAudioFiles[i] << endl;
+			exit(1);
+		}
+		bossSounds[i].setBuffer(bossBuffers[i]);
+		bossSounds[i].setLoop(true);
 	}
 }
-void printMap(){
-	for (int i = 0; i < mapSizeY; i++) { //prints the map using an array
-		for (int j = 0; j < mapSizeX; j++) {
-			cout << map1[i][j];
-		}
-		cout << endl;
+string moveOption; //global string
+/* Level Design Template
+   //  0    1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18   19    20
+	 {"*","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","*"},//0
+	 {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//1
+	 {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//2
+	 {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//3
+	 {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//4
+	 {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//5
+	 {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//6
+	 {"*","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","*"} //7*/
+string map0[mapSizeY][mapSizeX] = { //global array to design map
+	//  0    1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18    19   20
+	  {"*","***","***","***","***","***","***","***","***","___","***","***","***","***","***","***","*  ","   ","   ","   "," "},//0
+	  {"*","   ","   "," * ","   "," * ","   "," * "," * ","   "," * "," * ","   ","   ","   ","   ","*  ","   ","   ","   "," "},//1
+	  {"*","   ","   "," | ","   "," * ","   "," * "," * ","   ","***","***","   ","***","***","   ","*  ","   ","   ","   "," "},//2
+	  {"*","   ","   "," * ","   "," * ","   "," * "," * ","   ","   ","   ","   ","   "," * ","   ","*  ","   ","   ","   "," "},//3
+	  {"*","***","***","** ","   "," * ","   "," * "," **","***","***","***","***","***","***","   ","*  ","   ","   ","   "," "},//4
+	  {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*  ","   ","   ","   "," "},//5
+	  {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*  ","   ","   ","   "," "},//6
+	  {"*","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","*  ","   ","   ","   "," "} //7
+};
+string map1[mapSizeY][mapSizeX] = { //global array to design map
+	//  0    1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18   19    20
+	  {"*","***","***","***","***","***","***","***","*  ","   ","   ","   ","  *","***","***","***","***","***","***","***","*"},//0
+	  {"*","   ","   ","   "," * ","   ","   ","   ","*  ","   ","   ","   ","  *","   ","   ","   "," * ","   ","   ","   ","*"},//1
+	  {"*","   "," * ","   "," * ","   "," * ","   ","*  ","   ","   ","   ","  *","   "," * ","   "," * ","   "," * ","   ","*"},//2
+	  {"*","   "," * ","   "," * ","   "," * ","   ","*  ","   ","   ","   ","  *","   "," * ","   "," * ","   "," * ","   ","*"},//3
+	  {"*","   "," * ","   "," * ","   "," * ","   ","*  ","   ","   ","   ","  *","   "," * ","   "," * ","   "," * ","   ","*"},//4
+	  {"*","   "," * ","   "," * ","   "," * ","   ","*  ","   ","   ","   ","  *","   "," * ","   "," * ","   "," * ","   ","*"},//5
+	  {"*","   "," * ","   ","   ","   "," * ","   ","*  ","   ","   ","   ","  *","   "," * ","   ","   ","   "," * ","   ","*"},//6
+	  {"*","   "," **","***","***","***","***","***","*  ","   ","   ","   ","  *","***","***","***","***","***","** ","   ","*"} //7
+};
+string map2[mapSizeY][mapSizeX] = {
+	//  0    1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18   19    20
+	  {"*","___","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","*"},//0
+	  {"*","   ","   ","   ","   ","   ","   ","   ","   ","  *","   "," * ","   ","   ","   ","   ","   ","   ","  *","   ","*"},//1
+	  {"*","   ","***","***","***","***","***","***","***","***","   "," **","***","***","***","***","***","***","***","   ","*"},//2
+	  {"*","   ","   ","   ","   ","   ","   ","   ","|  ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//3
+	  {"*","   ","   ","   ","   ","   ","   ","   ","*  ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//4
+	  {"*","***","***","***","***","***","***","***","***","**/","///","/**","***","***","***","***","***","***","***","   ","*"},//5
+	  {"*","   ","   ","   ","   ","   ","   ","   ","   ","  *","   "," * ","   ","   ","   ","   ","   ","   ","  *","   ","*"},//6
+	  {"*","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","***","   ","*"} //7
+};
+string map3[mapSizeY][mapSizeX] = {
+	//  0    1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18   19    20
+	  {" ","   ","   ","  *","___","***","***","***","***","***","***","***","***","***","***","***","*  ","   ","   ","   "," "},//0
+	  {" ","   ","   ","  *","   "," * ","   ","   ","   ","   ","   ","   ","  *","   ","*  ","   ","*  ","   ","   ","   "," "},//1
+	  {"*","***","***","***","   "," * ","   ","   ","   ","   ","   ","   ","  *","   ","*  ","   ","***","***","***","***","*"},//2
+	  {"*","   ","   ","   ","   "," * ","   ","   ","   ","   ","   ","   ","  *","///","*  ","   ","/  ","   ","   ","   ","*"},//3
+	  {"*","   ","***","** ","   "," * ","   ","   ","  *","   ","*  ","   ","   ","   ","   ","   ","***","***","***","***","*"},//4
+	  {"*","   ","   "," * ","   "," * ","   ","   ","  *","   ","*  ","   ","   ","   ","   ","   ","*  ","   ","   ","   "," "},//5
+	  {"*","   ","   ","** ","   ","   ","   ","   ","  *","   ","*  ","   ","   ","   ","   ","   ","*  ","   ","   ","   "," "},//6
+	  {"*","***","   ","***","***","***","***","***","***","***","***","***","***","***","***","***","*  ","   ","   ","   "," "} //7
+};
+string map4[mapSizeY][mapSizeX] = {
+	//  0    1     2     3     4     5     6     7     8     9    10    11    12    13    14    15    16    17    18   19    20
+	  {"*","***","***","***","***","***","***","***","***","***","___","***","***","***","***","***","***","***","***","***","*"},//0
+	  {"*","   ","/  ","   ","   ","   ","   ","   ","***","***","   ","*  ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//1
+	  {"*","   ","*  ","   ","   ","   ","   ","   ","   ","  *","   ","***","***","***","***","***","***","***","***","   ","*"},//2
+	  {"*","   ","***","***","***","***","***","***","***","***","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","*"},//3
+	  {"*","   ","   ","   ","   ","   ","   ","   ","   ","   ","   ","***","***","***","***","***","***","***","***","   ","*"},//4
+	  {"*","   ","***","***","***","***","***","***","***","***","   ","*  ","   ","   ","   ","   ","   ","   ","  *","   ","*"},//5
+	  {"*","   ","/  ","   ","   ","   ","   ","   ","   ","  *","   ","***","***","   ","   ","   ","   ","   ","  /","   ","*"},//6
+	  {"*","***","***","***","***","***","***","***","***","***","   ","***","***","***","***","***","***","***","***","***","*"} //7
+};
+string(*maps[5])[mapSizeX] = { map0, map1, map2,map3,map4 };//reference for which map to choose 
+//change the number after *maps for more levels
+int main()
+{
+	typewriter("Usage of fullscreen and volume is recommended for the optimum experience\n");
+	_getch();
+	system("cls");
+	bool bossVictory;
+	// Load audio for premise and title
+	sf::SoundBuffer premiseBuffer, titleBuffer;
+	if (!premiseBuffer.loadFromFile("Premise.ogg")) {
+		cerr << "Error loading premise audio!" << endl;
+		return -1;
 	}
-}
-bool battle(int enemyATK = 8, int enemyHP = 25, int enemySP = 15, string enemyName = "enemy"){
-	int maxEnemySP = enemySP, maxPlayerSP = playerSP,maxPlayerHP = playerHP; //saving original SP and HP values
-	string action, endBattle,enemyAction,previousEnemyAction;
-	string enemyActionMenu[3] = { "attack","defend","recharge" }; //random attack patterns for enemy
-	bool enemyVulnerable = false; //determines if the enemy is vulnerable
-	srand(time(0));
-	cout << "You have encountered an enemy!\n";
-	while (playerHP >= 0 && enemyHP >= 0) { //loop till end of battle
-		if (playerHP <= 0) {
-			cout << "\t\tYou died! but it's not over yet\n\t\t   Stay D E T E R M I N E D"
-				<< "\n\nEnter x to continue: "; cin >> endBattle;
-			playerHP = maxPlayerHP; playerSP = maxPlayerSP;
-			map1[posY][posX] = " ";
-			if (endBattle == "x")
-				return false;
-		}
-		cout << "Your HP: " << playerHP << "\tYour SP: " << playerSP << endl;
-		if (enemySP == maxEnemySP) {
-			enemyAction = enemyActionMenu[rand() % 2];
+	sf::Sound premiseSound;
+	premiseSound.setBuffer(premiseBuffer);
+
+	sf::Sound titleSound;
+	titleSound.setBuffer(titleBuffer);
+
+	// Play premise and show title screen
+	premise(premiseSound);
+	showTitleScreen(titleSound);
+
+	// Stop the premise sound once transitioning from title screen
+	premiseSound.stop();
+	initializeAudio();
+	cutscenes();
+	while (level == 0) {
+		level0();
+		cutscenes();
+		bossVictory = bossBattle();
+		if(bossVictory == true)
+		cutscenes();
+	}
+	bossBattleCounter = 0;
+	while (level == 1) {
+		level1();
+		cutscenes();
+		bossVictory = bossBattle();
+		if (bossVictory == true)
+		cutscenes();
+	}
+	bossBattleCounter = 0;
+	while (level == 2) {
+		level2();
+		cutscenes();
+		if (skipBattle == false) {
+			bossVictory = bossBattle();
+			if (bossVictory == true)
+			cutscenes();
 		}
 		else {
-			enemyAction = enemyActionMenu[rand() % 3];
+			cutsceneCounter++;
 		}
-		do {
-			cout << "Your turn!\n-Attack\t-Defend\t-Recharge\n"
-				<< "Choose your action: "; cin >> action;
-			toLowerCase(action);
-		} while ((action != "attack") && (action != "defend") && (action != "recharge")); //loop till appropriate input
-		if (action == "attack") {
-			if (playerSP <= 0) {
-				cout << "Unable to attack! You have run out of SP.\n";
-			}
-			else {
-				if(previousEnemyAction == "defend"){
-					if (enemyVulnerable == true) { //code for counter attack
-						cout << "Your counter attack was successful! " << enemyName << " was damaged.\n";
-						enemyHP = enemyHP - playerATK;
-						playerSP = -3;
-						enemyVulnerable = false;
-					}
-					else {
-						cout << enemyName << " defended against your attack! You're vulnerable.\n";
-						this_thread::sleep_for(chrono::seconds(4));
-						system("cls");
-						cout << "Enemy's turn!\n";
-						cout << enemyName << " landed a hit on you!\nYou have taken damage.\n";
-						playerHP = playerHP - enemyATK;
-						enemySP -= 3;
-						this_thread::sleep_for(chrono::seconds(4));
-						system("cls");
-						previousEnemyAction = "arbitrary";
-						continue;
-					}
-				}
-				else {
-					cout << "\nYou chose to attack! " << enemyName << " was damaged.\n";
-					enemyHP = enemyHP - playerATK;
-				}
-				playerSP-=5;
-			}
-		}
-		else if (action == "defend") {
-			cout << "\nYou chose to defend!Your stance has changed.\n";
-		}
-		else if (action == "recharge") {
-			cout << "\nYou chose to recharge!Your SP has replenished.\n";
-			if (playerSP < maxPlayerSP) {
-				playerSP+=7;
-				if (playerSP > maxPlayerSP){ //makes sure SP doesnt go higher than the max
-					playerSP = maxPlayerSP;
-				}
-			}
-		}
-		if (enemyHP <= 0) {
-			playerHP = maxPlayerHP + 5;
-			playerSP = maxPlayerSP + 5;
-			playerATK += 2;
-			cout << "\nYou have defeated the enemy!\n" 
-				<< "Updated Player Stats:\nHP: " << playerHP << "\tSP: " << playerSP << endl
-				<< "\n\nEnter x to continue: "; cin >> endBattle;
-			if (endBattle == "x")
-				return true;
-		}
-		this_thread::sleep_for(chrono::seconds(4));
-		system("cls");
-		cout << "Enemy's turn!\n";
-		if (enemyAction == "attack") {
-			if (action == "defend") {
-				cout << "You successfully defended against " << enemyName <<  " attack!\nThe enemy looks furious.\n";
-				enemyVulnerable = true;
-			}
-			else {
-				cout << enemyName << " landed a hit on you!\nYou have taken damage.\n";
-				playerHP = playerHP - enemyATK;
-			}
-			enemySP-=5;
-		}
-		else if (enemyAction == "recharge" || enemyAction == "defend") {
-			cout << enemyName << " seems to be plotting something...\n";
-			if (enemyAction == "recharge") {
-				enemySP += 7;
-				if (enemySP > maxEnemySP) {
-					enemySP = maxEnemySP;
-				}
-			}
-		}
-		this_thread::sleep_for(chrono::seconds(4));
-		system("cls");
-		previousEnemyAction = enemyAction;
+	}
+	skipBattle = false;
+	bossBattleCounter = 0;
+	while (level == 3) {
+		level3();
+		cutscenes();
+		bossVictory = bossBattle();
+		if (bossVictory == true)
+		cutscenes();
+	}
+	bossBattleCounter = 0;
+	while (level == 4) {
+		level4();
+		cutscenes();
+		bossBattle();
+		cutscenes();
+		bossVictory = bossBattle();
+		if (bossVictory == true)
+		cutscenes();
 	}
 }
-void movement() {
-	cout << "Use WASD keys to move:\n";
+
+bool battle(Character& player, Character& enemy)
+{
+	enemyDescription(enemy);
+	_getch();
+	system("cls");
+	while (player.HP > 0 && enemy.HP > 0)
+	{
+		cout << "Your turn!\n";
+		cout << "Your HP = " << player.HP << "\tYour SP = " << player.SP << endl;
+		cout << enemy.name << "'s HP = " << enemy.HP << endl << endl;
+		// Player's turn
+		string action;
+
+		cout << "Your turn! (Attack/Defend/Recharge): ";
+		cin >> action;
+		toLowerCase(action);
+
+		if (action == "attack")
+			attack(player, enemy);
+		else if (action == "defend")
+			defend(player);
+		else if (action == "recharge")
+			recharge(player);
+		else if (action == "heal")
+		{
+			int potion = stoi(inventory[1][1]);
+			if (potion <= 0)
+			{
+				cout << "No potions in inventory" << endl;
+				_getch();
+				system("cls");
+			}
+			else
+			{
+				heal(player);
+			}
+		}
+		else
+		{
+			cout << "Not a Valid Input. Penalty of no turn Imposed!!";
+			_getch();
+			system("cls");
+		}
+
+		if (enemy.HP <= 0)
+		{
+			cout << "You defeated " << enemy.name << "!" << endl;
+			player.XP += enemy.XP + XPrelativetoHP(enemy.XP); //add in total XP of player
+			player.HP = player.maxHP; player.SP = player.maxSP; //initializes to original stats after battle
+			levelUpSystem();
+			_getch();
+			system("cls");
+			return true;
+		}
+
+		enemy.isDefending = false; //resetting the defense after each turn of player
+
+		// Enemy's turn
+		cout << enemy.name << "'s turn!" << endl;
+
+		int enemyAction = rand() % 3; // Random enemy action
+
+		if (enemyAction == 2 && enemy.SP == enemy.maxSP) //Doesn't let enemy recharge if already at max SP to make enemy actions logical
+			enemyAction = 0;
+
+		if (player.isVulnerable)
+			enemyAction == 0;
+
+		if (enemyAction == 0)
+			attack(enemy, player);
+		else if (enemyAction == 1)
+			defend(enemy);
+		else if (enemyAction == 2)
+			recharge(enemy);
+
+		if (player.HP <= 0)
+		{
+			cout << "You were defeated by " << enemy.name << "." << endl;
+			_getch();
+			player.HP = player.maxHP; player.SP = player.maxSP; //initializes to original stats after battle
+			system("cls");
+			return false;
+		}
+
+		player.isDefending = false; //resetting the defense after each turn of enemy
+
+	}
+	return false;
+}
+
+
+void attack(Character& attacker, Character& target)
+{
+	if (target.isVulnerable == true)
+	{
+		float tempAttack = attacker.ATK;
+		tempAttack = tempAttack * 1.5;
+		cout << attacker.name << " counter attacked " << target.name << " for " << tempAttack << " damage!" << endl;
+		target.HP -= tempAttack;
+		target.isVulnerable = false;
+		_getch();
+		system("cls");
+		return;
+	}
+
+	if (attacker.SP >= 50)
+	{
+		if (target.isDefending)
+		{
+			cout << target.name << " blocked the attack. " << attacker.name << " is vulnerable!" << endl;
+			attacker.isVulnerable = true;
+		}
+		else
+		{
+			target.HP -= attacker.ATK;
+			attacker.SP -= 50;
+			cout << attacker.name << " attacked " << target.name << " for " << attacker.ATK << " damage!" << endl;
+		}
+	}
+	else
+	{
+		cout << attacker.name << "'s attack failed because of insufficient SP!" << endl;
+	}
+	_getch();
+	system("cls");
+}
+
+void defend(Character& defender)
+{
+	defender.isDefending = true;
+	cout << defender.name << " seems to be plotting something" << endl;
+	_getch();
+	system("cls");
+}
+
+void recharge(Character& character)
+{
+	character.SP += 70;
+	if (character.SP > character.maxSP)
+		character.SP = character.maxSP;
+	cout << character.name << " seems to be plotting something" << endl;
+	_getch();
+	system("cls");
+}
+void heal(Character& player)
+{
+	player.HP += (player.maxHP * 0.5);
+	if (player.HP > player.maxHP) {
+		player.HP = player.maxHP;
+	}
+	removeItem("Health Potion", 1);
+	cout << "1 Health Potion used to increase HP by " << player.maxHP * 0.5 << endl;
+	_getch();
+	system("cls");
+}
+void movement()
+{
+	int newY = posY, newX = posX;
 	char moveOption = _getch(); // capture single key press without Enter
+	auto& currentMap = maps[level]; // Access the current level map
 	if (moveOption == 'w' || moveOption == 'W') {
 		newY = posY - 1;
-		if (map1[newY][posX] != "*") {
-			map1[posY][posX] = " "; //replaces X with a space
-			posY = newY;            //replaces newY with posY if valid 
-			map1[posY][posX] = "X"; //replaces a space with an X
-		}
 	}
 	else if (moveOption == 's' || moveOption == 'S') {
 		newY = posY + 1;
-		if (map1[newY][posX] != "*") {
-			map1[posY][posX] = " ";
-			posY = newY;
-			map1[posY][posX] = "X";
-		}
+	}
+	else if (moveOption == 'a' || moveOption == 'A') {
+		newX = posX - 1;
 	}
 	else if (moveOption == 'd' || moveOption == 'D') {
 		newX = posX + 1;
-		if (map1[posY][newX] != "*") {
-			map1[posY][posX] = " ";
-			posX = newX;
-			map1[posY][posX] = "X";
-		}
 	}
-	else if (moveOption == 'a' || moveOption == 'A'){
-		newX = posX - 1;
-		if (map1[posY][newX] != "*") {
-			map1[posY][posX] = " ";
-			posX = newX;
-			map1[posY][posX] = "X";
-		}
+	else if (moveOption == 'i' || moveOption == 'I')
+	{
+		displayInventory();
+	}
+	if (currentMap[newY][newX] == "   ") {
+		currentMap[posY][posX] = "   ";      // Clear the old position
+		posX = newX;                         // Update position
+		posY = newY;
+		currentMap[posY][posX] = playerCursor; // Place the player cursor
 	}
 }
-int main() {
-	int i = 0;
-	bool victory;
-	map1[posY][posX] = "X";
-	while (true) {     //infinite loop for the next movement
-		system("cls"); //clears screen before next iteration
-		if (i == 0) { //condition makes sure the battle only happens once in case of victory
-			if (map1[3][3] == "X") { //coordinates of the enemy
-				victory = battle(10,25,12,"Gwyn");
-				if (victory == true) {
-					i++;
+void printMap()
+{
+	auto& currentMap = maps[level]; // Access the current level map
+	string cumulation;
+	cumulation += "Use WASD to move:\nW: Move up\nS: Move down\nA: Move left\nD: Move right\nI: Check Inventory\n\n\n\n";
+	for (int i = 0; i < mapSizeY; i++) //prints the map using an array
+	{
+		for (int j = 0; j < mapSizeX; j++)
+		{
+			cumulation += currentMap[i][j];
+		}
+		cumulation += "\n";
+	}
+	cout << cumulation;
+}
+int findItem(const string& itemName)
+{
+	for (int i = 0; i < ROWS; i++)
+	{
+		if (inventory[i][0] == itemName)
+		{
+			return i; // Returns the index of the item to be found
+		}
+	}
+	return -1; // If item is not found
+}
+
+void addItem(const string& itemName, int quantity)
+{
+	int index = findItem(itemName);
+	if (index == -1)
+	{
+		cout << "[Error] Item '" << itemName << "' does not exist in the inventory!" << endl;
+		_getch();
+		system("cls");
+		return;
+	}
+
+	// Update quantity (convert string to int, add, and convert back)
+	int currentQuantity = stoi(inventory[index][1]);
+	currentQuantity += quantity;
+	inventory[index][1] = to_string(currentQuantity);
+
+	cout << "[Inventory] Added " << quantity << " '" << itemName << "' to the inventory.";
+	_getch();
+	system("cls");
+}
+
+void removeItem(const string& itemName, int quantity)
+{
+	int index = findItem(itemName);
+	if (index == -1)
+	{
+		cout << "[Error] Item '" << itemName << "' does not exist in the inventory!" << endl;
+		_getch();
+		system("cls");
+		return;
+	}
+
+	int currentQuantity = stoi(inventory[index][1]);
+
+	if (quantity > currentQuantity)
+	{
+		cout << "[Inventory Error] '" << itemName << "' is less than the specified quantity to be utilized\n";
+	}
+	else
+	{
+		currentQuantity -= quantity;
+		inventory[index][1] = to_string(currentQuantity);
+		cout << "[Inventory] Removed " << quantity << " '" << itemName << "'." << endl;
+	}
+	_getch();
+	system("cls");
+}
+int XPrelativetoHP(int enemyXP) { //returns certain portion of enemyXP based on player's current health
+	if (player.HP == player.maxHP) {
+		return enemyXP;
+	}
+	else if (player.HP >= player.maxHP / 2 && player.HP < player.maxHP) {
+		return enemyXP / 2;
+	}
+	else if (player.HP >= player.maxHP / 4 && player.HP < player.maxHP / 2) {
+		return enemyXP / 4;
+	}
+	else if (player.HP > 0 && player.HP < player.maxHP / 4) {
+		return 0;
+	}
+}
+void levelUpSystem() {
+	if (player.level < 20) {
+		while (player.XP >= levelUpXPRequirements[player.level]) {
+			player.level++;
+			player.maxHP += 50; player.maxSP += 20; player.ATK += 10;
+			player.HP = player.maxHP; player.SP = player.maxSP; //initializes to original stats after battle
+			cout << "You have levelled up! Your new level is: " << player.level << endl
+				<< "Your stats have updated." << endl
+				<< "HP: " << player.HP << "\tSP: " << player.SP << "\tATK: " << player.ATK << endl;
+			_getch();
+			system("cls");
+		}
+		typewriter("XP left till next level: "); cout << levelUpXPRequirements[player.level] % player.XP << endl;
+	}
+	else {
+		typewriter("You have already reached max level/n");
+		_getch();
+	}
+}
+void displayInventory()
+{
+	cout << "\n[Inventory]\n";
+	for (int i = 0; i < ROWS; i++)
+	{
+		cout << "- " << inventory[i][0] << ": " << inventory[i][1] << " (" << inventory[i][2] << ")" << endl;
+	}
+	_getch();
+	system("cls");
+}
+
+void toLowerCase(string& str) //to make the input in lowercase
+{
+	for (char& c : str)
+	{
+		c = tolower(c);
+	}
+}
+void typewriter(string text, int n) {
+	for (int i = 0; i < text.length(); ++i) {
+		if (_kbhit()) { // Check if any key is pressed
+			char key = _getch(); // Consume the key press
+			if (key == ' ') {
+				cout << text.substr(i) << flush; // Display the rest of the text
+				return; // Exit the animation
+			}
+		}
+		cout << text[i]; // Print one character at a time
+		cout.flush(); // Ensure immediate display
+		this_thread::sleep_for(chrono::milliseconds(n)); // Delay
+	}
+}
+
+void premise(sf::Sound& premiseSound) {
+	premiseSound.setLoop(true); // Loop the sound
+	premiseSound.play();       // Start playing
+
+	// Display the premise text
+	typewriter("The glorious dunes of sand turned to a land of pain. A land of agony. A land of suffering.\nA kingdom of great 'prestige', built merely upon the deaths of many and cries of countless.\nAll by the hands of a tyrant ruler.\n");
+	_getch();
+	system("cls");
+
+	typewriter("But to all dark, there is light. To all despair, there is hope.\nHope in the form of individuals.\nIndividuals who hold nothing but a sword in their hands and a dream to be fully and wholly free.\nThe rebels, who fought back the oppression in their cloaks of bravery, were the final ray of hope for many.\nThe voices felt dim, but not dead. The call of tranquility.\n");
+	_getch();
+	system("cls");
+}
+
+void enemyDescription(Character enemy) {
+	if (enemy.name == "Smeogol") {
+		typewriter("You have come across a Smeogal!\nIt's short and well equiped.\nLook out for your knees.\n");
+	}
+	else if (enemy.name == "NasNaas") {
+		typewriter("You have come across a NasNaas!\nA human shaped creature, but with only half a head, one leg and one arm.\nIt's surprisingly capable to move at great speeds.\n");
+	}
+	else if (enemy.name == "Shadh") {
+		typewriter("You have come across a Shadh!\nA one eyed giant, the size of 4 humans.\nHowever its movement and reaction speed seems slothful.\n");
+	}
+	else if (enemy.name == "Karkadann") {
+		typewriter("You have come across a Karkadann.\nA rhinoceros looking beast.\nAgile and quick.\n");
+	}
+	else if (enemy.name == "King's Knight") {
+		typewriter("You have come across one of the King's Knights.\nArmor made of steel, and the finest Sword in his hand.\nHis stance displays his experience and skillset.\n");
+	}
+}
+void cutscenes() {
+	if (cutsceneCounter == 0) {
+		system("cls");
+		typewriter("Your body feels heavy, as if you had been unconscious for ages.\nAs you open your eyes, you see yourself behind bars in a tiny room.\nYou see 2 people in armours outside your cell, including a man with a scar on his face. \n\"Karitha\" is the name the man is being referred to\nKaritha leaves.\n");
+		_getch();
+		system("cls");
+		typewriter("The only possession you have is a piece of clothing. You also find a star shaped necklace on the floor.\nYou decide to finally get up\n");
+		system("cls");
+		_getch();
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 1) {
+		system("cls");
+		typewriter("As you walk past the door, you're met with a room harboring endless darkness.\nThe only source of light you can find is a firelit torch.\nEver so slight, yet you can hear the sound of...hissing?\n\nThe more you progress, the more the hissing intensifies. Instead of coming from the front, you feel like it's now coming from above.\nYou gradually tilt your head up...you can't believe what your eyes are witnessing.\n");
+		_getch();
+		system("cls");
+		typewriter("You witness a serpent-like creature double your size.\nThe top of a beautiful woman, with the bottom of serpent.\nThe Shahmaran!");
+		this_thread::sleep_for(chrono::seconds(3));
+		typewriter("\nOut of shock, you drop your sword.The Shahmaran senses the sound.\nIt gradually moves towards you. You take your stance, and prepare yourself for a confrontation.\n");
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 2) {
+		system("cls");
+		typewriter("Blood.\n",500);
+		typewriter("You're soaked in the blood on the monster. It disgusts you.\nYou're feeling overwhelmed.\nYou feel like the best escape from this hell is to...");
+		typewriter("Kill yourself...", 500);
+		_getch();
+		system("cls");
+		typewriter("What do you choose?\n-Live\n-Die\n");
+		string choice;
+		cin >> choice;
+		toLowerCase(choice);
+		do {
+			if (choice == "die") {
+				typewriter("You use your sword to slit your throat. You're struggling to breath anymore.\nYou feel your body lose its weight, as you succumb to eternal slumber..\n");
+				level = 100;
+			}
+			else if (choice == "live") {
+				typewriter("Even with everything you went through, you decide to keep pushing.\nYou realize you have a greater purpose to fulfill. You decide to keep moving forward.\nTruly commendable\n");
+			}
+		} while (choice != "live" || choice != "die");
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 3) {
+		system("cls");
+		typewriter("On the other side of the door, you come across...a young lady?\nYou approach her out of curiosity.\n\"Greetings! I am Sila. Are you lost, mister?\"\nHer presence is calming, and her elegance in speech is truly admirable.\nHer beauty seems almost\n");
+		typewriter("...entrapping?\n", 300);
+		_getch();
+		system("cls");
+		typewriter("You feel a shiver down your spine. You take a step behind reflexively.\nThe smile on sila's face drops.\n\"So you have realized it. You're a clever one, aren't you?\"\nThe lady that seemed as the embodiment of beauty, all of a sudden shapeshifts into an ape-like beast!\nIt leaps to attack you!\n");
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 4) {
+		system("cls");
+		typewriter("The battle with Sila makes you realize that every attraction in this Castle is a facade. You move on to the next floor\n");
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 5) {
+		system("cls");
+		typewriter("You enter a room full of different ponds.\nYou read a sign that says \"Marid's Chamber\"\n");
+		if (inventory[3][1] == "1") {
+			typewriter("You see a creature but it looks...hollow. It's likely a ghoul.\nIt seems to traverse through the ponds. You proceed to get a closer look.\nAs you get closer, you can faintly hear it...crying?\n");
+			_getch();
+			system("cls");
+			typewriter("The ghoul hasn't seemed to notice you. You can backstab it and move on through your way.\nDo you wish to kill it?(y/n)\n");
+			char choice1 = 'x';
+			do {
+				if (choice1 == 'n') {
+					typewriter("You drop your sword. The sound of it attracts the attention of the ghoul.\nThe ghoul thinks you're an enemy and takes stance.\nAs it moves, you're able to see a kid ghoul that seems wounded.\n");
+					_getch();
+					system("cls");
+					if (stoi(inventory[1][1]) > 0) {
+						typewriter("Are you willing to offer your healing potion to the ghoul?(y/n)\n");
+						char choice2 = _getch();
+						if (choice2 == 'y') {
+							typewriter("You offer the health potion to the ghoul. It picks up the potion with some hesitation, and treats her child with it.\nThe kid ghoul seems to recover. The mother ghoul stops crying.\nIt drops a longsword with the name \"Marid\" on it as a gesture of gratitude. That seems to be the name of the ghoul.\n The sword will increase the damage you deal to enemies.\nMarid takes her child with her into the pond and disappears. You continue to proceed\n");
+							player.ATK += 50;
+							skipBattle = true;
+						}
+						else {
+							typewriter("The ghoul attacks you off guard! You hurry to pick up the sword to fight back\n");
+							player.HP -= 50;
+						}
+					}
+					else {
+						typewriter("The ghoul attacks you off guard! You hurry to pick up the sword to fight back\n");
+						player.HP -= 50;
+					}
 				}
-				else if (victory == false) {
+				else {
+					typewriter("The ghoul dodges you completely and counter attacks! You take damage.\n");
+					player.HP -= 100;
+				}
+			} while (choice1 != 'y' || choice1 != 'Y' || choice1 != 'n' || choice1 != 'N');
+		}
+		else {
+			typewriter("You sense a creature, but you arent't able to see it properly. You attack it instinctively before it attacks you\n");
+		}
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 6) {
+		system("cls");
+		typewriter("You have defeated Marid...but...\nYou feel like you have did something terribly wrong...\n");
+		typewriter("Has this place changed you?\nAre you turning into a...");
+		typewriter("monster..?", 500);
+		_getch();
+		system("cls");
+	}
+	else if (cutsceneCounter == 7) {
+		system("cls");
+		typewriter("You come across the man in armor. He looks like karitha, the right hand man of the king.\n\"Ah, so you escaped. Well, I expected so. You stubborn pests don't give up so easily do you?\nYou should feel honored, for the great karitha is about to teach you a lesson with his own hands\n");
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 8) {
+		system("cls");
+		typewriter("So this is how I come to my demise? By the hands of a lowly lifeform like you...\nSince you have defeated me, it is only right for me to give you what you need the most, in the honor of being a warrior myself.\n\n");
+		typewriter("The truth.\n", 400);
+		_getch();
+		system("cls");
+		typewriter("You used to be the leader of the resistance that worked against this kingdom. Your constant efforts to overthrow the King were proving to be fruitful.\nYou were causing quite the nuisance. So the King, \"Sahm al Shar\", ordered us to kidnap you, a task that I carried out with my own hands.\n You were ambushed, and were overpowered. The king planned to use your life to negotiate with the resistance so we couldn't end your life, as much as I would have loved to do it.\nInstead, the King ordered his mages to lock away all your memories and your speech using their magic.\nThe King thought that'd stop you, but here you are...you stubborn ****...\nKaritha takes his last breath. Now being aware of the truth, you have more than ever to fight for. You keep moving forward.\n");
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 9) {
+		system("cls");
+		typewriter("You move to the throne room. You find the King there himself.\n\"You've been causing quite the commotion inside my castle. Don't you think that's disrespectful to your King?\"\nEven that look on your face...it disgusts me to the core. Filth like you should't be allowed anywhere near my the great presence of mine\nI shall end your useless existence too.\n");
+		typewriter("As I have of countless of your kind.\"", 200);
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+	else if (cutsceneCounter == 10) {
+		system("cls");
+		typewriter("\"See? That's what you are, nothing but a helpless ant.\"\nYou're bleeding...\nThe damage you've been dealt...you're unable to survive.\n");
+		_getch();
+		system("cls");
+		typewriter("GAME OVE-\n", 500);
+		_getch();
+		system("cls");
+		typewriter("\"No...I refuse to give up...my people need me\"\n", 200);
+		typewriter("You...spoke? Does that mean...you have broken the curse of the mages? That means...you remember everything now?\n");
+		_getch();
+		system("cls");
+		typewriter("Your necklace starts shining bright, bright as the Sun.\nThe necklace forms an armor of light around your body, and a sword heavy as a boulder, yet this mysterious power of yours ables you to carry it.\n\"Oh you're still alive? That doesn't matter. I will show you the true power of the Arrow of Evil.\n");
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+		player.ATK *= 10; player.HP *= 10; player.SP *= 10;
+	}
+	else if (cutsceneCounter == 11) {
+		system("cls");
+		typewriter("\"NO!!! THIS CANNOT BE! THE GREAT SAHM REFUSES TO DIE AT THE HANDS OF SUCH FILTH LIKE YOURSELF...\"\n\n\"Dying at my hands itself is an eternal punishment for you. Not one death will go unaccounted for.\"\n\n");
+		_getch();
+		typewriter("\"Not One.\"", 500);
+		_getch();
+		system("cls");
+		cutsceneCounter++;
+	}
+}
+void level0() {
+	bool victory;
+	posX = 1; posY = 1;
+	startX = posX; startY = posY;
+	map0[posY][posX] = playerCursor;
+	while (true) //infinite loop for the next movement
+	{
+		if (map0[0][9] == playerCursor) {
+			break;
+		}
+		system("cls"); //clears screen before next iteration
+		if (levelitems0.enemy == 0) //condition makes sure the battle only happens once in case of victory
+		{
+			if (map0[1][6] == playerCursor) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 0);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems0.enemy++;
+				}
+				else if (victory == false)
+				{
+					map0[posY][posX] = "   ";
 					posY = startY; posX = startX;
-					map1[posY][posX] = "X";      //putting cursor in starting position after loss
+					map0[posY][posX] = playerCursor;      //putting cursor in starting position after loss
 				}
 			}
 		}
+		if (levelitems0.keys == 1 && map0[1][6] == playerCursor)
+		{
+			addItem("Key", 1);
+			levelitems0.keys++;
+		}
+		if (levelitems0.keys == 0 && map0[3][2] == playerCursor)
+		{
+			typewriter("The prison guard seems vulnerable. Do you want to knock him down?(y/n)\n\n");
+			char choice = 'x';
+			do {
+				choice = _getch();
+				if (choice == 'y' or choice == 'Y') {
+					typewriter("You knocked the guard down and stole his key.\nYou also decide to steal his armor and his sword\n\n");
+					_getch();
+					system("cls");
+					addItem("Key", 1);
+					levelitems0.keys++;
+				}
+			} while (choice != 'y' || choice != 'Y' || choice != 'n' || choice != 'N');
+		}
+		if (map0[2][2] == playerCursor) // Door 1 logic
+		{
+			if (map0[2][3] == "   ") {
+				cout << "The door is already unlocked." << endl;
+			}
+			else if (inventory[0][1] == "1") {
+				map0[2][3] = "   "; // Mark the door as open
+				levelitems0.doors++;
+				removeItem("Key", 1);
+				cout << "You unlocked the first door!" << endl;
+			}
+			else {
+				cout << "You need a key to unlock this door!" << endl;
+			}
+		}
+
+
+		if (map0[1][9] == playerCursor) // Door 2 logic
+		{
+			if (inventory[0][1] == "1")
+			{
+				map0[0][9] = "   ";
+				levelitems0.doors++;
+				removeItem("Key", 1);
+				cout << "You unlocked the second door!" << endl;
+			}
+			else
+			{
+				cout << "You need a key to unlock this door!" << endl;
+			}
+		}
+		if (map0[6][1] == playerCursor) {
+			typewriter("You come across a picture of Dr Naeem Zafar Azeemi.\nYou're hit with a wave of nostalgia\n\n");
+			_getch;
+		}
+		if (map0[1][2] == playerCursor) {
+			typewriter("A dirty mirror is hanging on the wall.\nYou can barely see your reflection.\n\n");
+			_getch();
+		}
+		if (map0[3][13] == playerCursor && levelitems0.potions == 0) {
+			addItem("Health Potion", 1);
+			levelitems0.potions++;
+		}
 		printMap();
 		movement();
+	}
+}
+void level1() {
+	bool victory;
+	posX = 1; posY = 6;
+	startX = posX; startY = posY;
+	map1[posY][posX] = playerCursor;
+	while (true) //infinite loop for the next movement
+	{
+		if (map1[7][19] == playerCursor) {
+			break;
+		}
+		system("cls"); //clears screen before next iteration
+		if (levelitems1.enemy == 0) //condition makes sure the battle only happens once in case of victory
+		{
+			if (map1[6][4] == playerCursor) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 1);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems1.enemy++;
+				}
+				else if (victory == false)
+				{
+					map1[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map1[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (map1[6][7] == playerCursor) {
+			typewriter("This wall seems...weird. Do you want to interact with it?(y/n)\n");
+			char choice = 'x';
+			do {
+				choice = _getch();
+				if (choice == 'y' || choice == 'Y') {
+					map1[6][7] = "   ";
+					posX = 13; posY = 6;
+					map1[posY][posX] = playerCursor;
+					typewriter("It appears that the wall served as a portal.\n");
+					_getch();
+				}
+			} while (choice != 'y' || choice != 'Y' || choice != 'n' || choice != 'N');
+		}
+		if (map1[1][15] == playerCursor) {
+			typewriter("There's some writing on this wall...although it makes only as much sense as\nDiscrete Math lectures.\n");
+			_getch();
+		}
+		if (levelitems1.enemy == 1) //condition makes sure the battle only happens once in case of victory
+		{
+			if (map1[1][18] == playerCursor) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 1);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems1.enemy++;
+				}
+				else if (victory == false)
+				{
+					map1[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map1[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (map1[4][7] == playerCursor && levelitems1.potions == 0) {
+			addItem("Health Potion", 1);
+			levelitems1.potions++;
+		}
+		printMap();
+		movement();
+	}
+}
+void level2() {
+	bool victory;
+	posX = 19; posY = 6;
+	startX = posX; startY = posY;
+	map2[posY][posX] = playerCursor;
+	int medalCounter = 0;
+	while (true) //infinite loop for the next movement
+	{
+		if (map2[0][1] == playerCursor) {
+			break;
+		}
+		system("cls"); //clears screen before next iteration
+		if (levelitems2.enemy == 0) //condition makes sure the battle only happens once in case of victory
+		{
+			if (map2[1][10] == playerCursor) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 2);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems2.enemy++;
+					map2[5][10] = "   ";
+				}
+				else if (victory == false)
+				{
+					map2[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map2[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (levelitems2.enemy == 1) //condition makes sure the battle only happens once in case of victory
+		{
+			if (map2[6][10] == playerCursor) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 2);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems2.enemy++;
+				}
+				else if (victory == false)
+				{
+					map2[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map2[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (levelitems2.keys == 1 && map2[6][10] == playerCursor)
+		{
+			addItem("Key", 1);
+			levelitems2.keys++;
+		}
+		if (levelitems2.keys == 0 && map2[1][10] == playerCursor)
+		{
+			addItem("Key", 1);
+			levelitems2.keys++;
+		}
+		if (map2[3][9] == playerCursor) // Door 1 logic
+		{
+			if (map2[3][8] == "   ") {
+				cout << "The door is already unlocked." << endl;
+			}
+			else if (stoi(inventory[0][1]) > 0) {
+				map2[3][8] = "   "; // Mark the door as open
+				levelitems2.doors++;
+				removeItem("Key", 1);
+				cout << "You unlocked the first door!" << endl;
+			}
+			else {
+				cout << "You need a key to unlock this door!" << endl;
+			}
+		}
+
+
+		if (map2[1][1] == playerCursor) // Door 2 logic
+		{
+			if (map2[0][1] == "   ") {
+				cout << "The door is already unlocked." << endl;
+			}
+			else if (inventory[0][1] == "1") {
+				map2[0][1] = "   "; // Mark the door as open
+				levelitems2.doors++;
+				removeItem("Key", 1);
+				cout << "You unlocked the first door!" << endl;
+			}
+			else {
+				cout << "You need a key to unlock this door!" << endl;
+			}
+		}
+
+		if (map2[1][19] == playerCursor) {
+			typewriter("\"Turning this portal on will display an ideal world.\"\nDo you wish to turn it on?(y/n)");
+			char choice = 'x';
+			system("cls");
+			do {
+				choice = _getch();
+				if (choice == 'y' || choice == 'Y') {
+					typewriter("The portal displays a world where NxST actually has logical policies.\nIt brings tears to your eyes.\n\n");
+					_getch;
+				}
+			} while (choice != 'y' || choice != 'Y' || choice != 'n' || choice != 'N');
+		}
+		if (map2[1][8] == playerCursor && medalCounter == 0) {
+			typewriter("You found a medal on the floor. It says \"Ghoul's Medal\"\n");
+			inventory[3][0] = "Ghoul's Medal"; inventory[3][1] = "0"; inventory[3][2] = "This medal allows you to see ghouls clearly.";
+			addItem("Ghoul's Medal", 1);
+			medalCounter++;
+		}
+		printMap();
+		movement();
+	}
+}
+void level3() {
+	bool victory;
+	string doorInput;
+	posX = 2; posY = 6;
+	startX = posX; startY = posY;
+	map3[posY][posX] = playerCursor;
+	while (true) //infinite loop for the next movement
+	{
+		if (map3[0][4] == playerCursor) {
+			break;
+		}
+		system("cls");
+		if (map3[6][9] == playerCursor) //condition makes sure the battle only happens once in case of victory
+		{
+			if (levelitems3.enemy == 0) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 3);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems3.enemy++;
+					map3[3][13] = "   ";
+				}
+				else if (victory == false)
+				{
+					map3[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map3[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+			typewriter("There's something written on the wall\n1: G\n");
+			_getch();
+		}
+		if (map3[1][13] == playerCursor) //condition makes sure the battle only happens once in case of victory
+		{
+			if (levelitems3.enemy == 1) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 3);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems3.enemy++;
+					map3[3][16] = "   ";
+				}
+				else if (victory == false)
+				{
+					map3[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map3[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+			typewriter("The enemy dropped a paper. Something's written on it.\n2: A\n");
+			_getch();
+		}
+		if (map3[3][19] == playerCursor) //condition makes sure the battle only happens once in case of victory
+		{
+			if (levelitems3.enemy == 2) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 3);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems3.enemy++;
+				}
+				else if (victory == false)
+				{
+					map3[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map3[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+			typewriter("You found something carved on the floor\n3: E\n");
+			_getch;
+		}
+		if (map3[1][4] == playerCursor && map3[0][4] != "   " && bossBattleCounter == 0) {
+			typewriter("The door has 3 placeholders. Seems like you have to input 3 letters: "); cin >> doorInput;
+			toLowerCase(doorInput);
+			if (doorInput == "gae") {
+				cout << "The door opened!\n";
+				map3[0][4] = "   ";
+			}
+			else {
+				typewriter("Hmm...seems like that's the wrong code\n");
+			}
+		}
+		if (map3[3][1] == playerCursor) {
+			typewriter("You stumble across a feminist literature book collection owned by some \"Ali Ahsan.\"\nMust be an intellectual individual.\n");
+			_getch();
+		}
+		if (map3[1][6] == playerCursor && levelitems3.potions == 0) {
+			addItem("Health Potion", 1);
+			levelitems3.potions++;
+		}
+		printMap();
+		movement();
+	}
+}
+void level4() {
+	bool victory;
+	posX = 10; posY = 6;
+	startX = posX; startY = posY;
+	map4[posY][posX] = playerCursor;
+	while (true) //infinite loop for the next movement
+	{
+		system("cls");
+		if (map4[0][10] == playerCursor) {
+			string choice;
+			do {
+				system("cls");
+				typewriter("You have found an opening to the outside world. You can either leave, or make the King pay for his actions. What do you choose?\n-Stay\n-Leave\n");
+				cin >> choice;
+				toLowerCase(choice);
+			} while (choice != "stay" && choice != "leave");
+			if (choice == "leave") {
+				typewriter("You chose to leave. Doing this will cause the tyranny to go on for the centuries to come.\nAll because you wanted to runaway.\n");
+				typewriter("Enjoy your freedom...coward", 200);
+				while (true) {
+					cout << " coward ";
+				}
+			}
+			break;
+		}
+		if (map4[1][12] == playerCursor)//coordinates of the enemy
+		{
+			if (levelitems4.enemy == 0)  //condition makes sure the battle only happens once in case of victory
+			{
+				ch enemy = selectRandomEnemy(1, 3);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems4.enemy++;
+					map4[6][18] = "   ";
+					typewriter("The enemy dropped a piece of gemstone. You picked it up.\n\n");
+					_getch();
+					inventory[4][0] = "Door Gemstone"; inventory[4][1] = "0"; inventory[4][2] = "A piece of gemstone. Its use is unclear.";
+					addItem("Door Gemstone", 1);
+				}
+				else if (victory == false)
+				{
+					map4[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map4[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (map4[5][12] == playerCursor) //condition makes sure the battle only happens once in case of victory
+		{
+			if (levelitems4.enemy == 1) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 3);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems4.enemy++;
+					map4[1][2] = "   ";
+					typewriter("You found another piece of gemstone! Maybe there's more around.\n\n");
+					_getch();
+					addItem("Door Gemstone", 1);
+				}
+				else if (victory == false)
+				{
+					map4[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map4[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (map4[2][8] == playerCursor) //condition makes sure the battle only happens once in case of victory
+		{
+			if (levelitems4.enemy == 2) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 4);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems4.enemy++;
+					map4[6][2] = "   ";
+					typewriter("Another piece! You have found 3 now.\n\n");
+					_getch;
+					addItem("Door Gemstone", 1);
+				}
+				else if (victory == false)
+				{
+					map4[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map4[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (map4[6][8] == playerCursor) //condition makes sure the battle only happens once in case of victory
+		{
+			if (levelitems4.enemy == 3) //coordinates of the enemy
+			{
+				ch enemy = selectRandomEnemy(1, 4);
+				victory = battle(player, enemy);
+				if (victory == true)
+				{
+					levelitems4.enemy++;
+					typewriter("You have collected 4 pieces now! The gemstone seems to be completed.\n\n");
+					_getch;
+					addItem("Door Gemstone", 1);
+				}
+				else if (victory == false)
+				{
+					map4[posY][posX] = "   ";
+					posY = startY; posX = startX;
+					map4[posY][posX] = playerCursor;      //putting cursor in starting position after loss
+				}
+			}
+		}
+		if (map4[1][10] == playerCursor && bossBattleCounter == 0) {
+			if (levelitems4.enemy == 0) {
+				typewriter("This door doesn't seem to have a key. Although there's a peculiar shape carved into the door...\n\n");
+			}
+			else if (levelitems4.enemy == 4) {
+				typewriter("You put the gemstone in the door. The door has opened.\n\n");
+				map4[0][10] = "   ";
+				removeItem("Door Gemstone", 4);
+			}
+			else {
+				typewriter("Nothing happened.The gemstone doesn't seem complete...\n\n");
+			}
+		}
+		if (map4[2][3] == playerCursor) {
+			typewriter("You come across some writing inscribed into the wall. It reads as follows:\n\n");
+			_getch();
+			system("cls");
+			mainSound.stop();
+			sf::SoundBuffer wisdomBuffer;
+			if (!wisdomBuffer.loadFromFile("NaeemZafarWisdom.ogg")) {
+				cerr << "Error loading NaeemZafarWisdom audio!" << endl;
+				return;
+			}
+
+			sf::Sound NaeemZafarpookie;
+			NaeemZafarpookie.setBuffer(wisdomBuffer);
+			NaeemZafarpookie.play();
+
+			typewriter("\"You always try to find out where are the eyes.\n You never look for the nose inside the mountain.\"\n You are unable to comprehend such wisdom.\n");
+
+			// Wait for the audio to finish (optional)
+			while (NaeemZafarpookie.getStatus() == sf::Sound::Playing) {
+				this_thread::sleep_for(chrono::milliseconds(100));
+			}
+
+			mainSound.play();
+			system("cls");
+		}
+		printMap();
+		movement();
+	}
+}
+bool bossBattle() {
+	system("cls");
+
+	// Stop main audio and validate level
+	mainSound.stop();
+	if (level >= 0 && level < 5) {
+		bossSounds[level].stop(); // Ensure no overlapping sounds
+		bossSounds[level].setVolume(100); // Set volume to max
+		bossSounds[level].play(); // Play the boss sound
+	}
+	else {
+		cerr << "Invalid level for boss audio!" << endl;
+		return false; // Prevent further execution if level is invalid
+	}
+
+	bool victory;
+	auto& currentMap = maps[level]; // Access the current level map
+	ch boss = bosses[level];
+	victory = battle(player, boss);
+	// Stop boss audio and resume main audio
+	bossSounds[level].stop();
+	mainSound.play();
+
+	if (victory == true) {
+		level++;
+		return true;
+	}
+	else if (victory == false) {
+		currentMap[posY][posX] = "   ";
+		bossBattleCounter++;
+		cutsceneCounter--;
+		return false;
 	}
 }
