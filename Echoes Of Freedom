@@ -821,11 +821,11 @@ void cutscenes() {
 	}
 	else if (cutsceneCounter == 8) {
 		system("cls");
-		typewriter("So this is how I come to my demise? By the hands of a lowly lifeform like you...\nSince you have defeated me, it is only right for me to give you what you need the most, in the honor of being a warrior myself.\n\n");
-		typewriter("The truth.\n", 400);
+		typewriter("\"So this is how I come to my demise? By the hands of a lowly lifeform like you...\nSince you have defeated me, it is only right for me to give you what you need the most,\nin the honor of being a warrior myself.\"\n\n");
+		typewriter("\"The truth.\n\"", 400);
 		_getch();
 		system("cls");
-		typewriter("You used to be the leader of the resistance that worked against this kingdom. Your constant efforts to overthrow the King were proving to be fruitful.\nYou were causing quite the nuisance. So the King, \"Sahm al Shar\", ordered us to kidnap you, a task that I carried out with my own hands.\n You were ambushed, and were overpowered. The king planned to use your life to negotiate with the resistance so we couldn't end your life, as much as I would have loved to do it.\nInstead, the King ordered his mages to lock away all your memories and your speech using their magic.\nThe King thought that'd stop you, but here you are...you stubborn ****...\nKaritha takes his last breath. Now being aware of the truth, you have more than ever to fight for. You keep moving forward.\n");
+		typewriter("You used to be the leader of the resistance that worked against this kingdom.\nYour constant efforts to overthrow the King were proving to be fruitful.\nYou were causing quite the nuisance. So the King, \"Sahm al Shar\", ordered us to kidnap you, a task that I carried out with my own hands.\n You were ambushed, and were overpowered. The king planned to use your life to negotiate with the resistance so we couldn't end your life, as much as I would have loved to do it.\nInstead, the King ordered his mages to lock away all your memories and your speech using their magic.\nThe King thought that'd stop you, but here you are...you stubborn ****...\nKaritha takes his last breath.\nNow being aware of the truth, you have more than ever to fight for. You keep moving forward.\n");
 		_getch();
 		system("cls");
 		cutsceneCounter++;
@@ -850,7 +850,7 @@ void cutscenes() {
 		typewriter("You...spoke? Does that mean...you have broken the curse of the mages? That means...you remember everything now?\n");
 		_getch();
 		system("cls");
-		typewriter("Your necklace starts shining bright, bright as the Sun.\nThe necklace forms an armor of light around your body, and a sword heavy as a boulder, yet this mysterious power of yours ables you to carry it.\n\"Oh you're still alive? That doesn't matter. I will show you the true power of the Arrow of Evil.\n");
+		typewriter("Your necklace starts shining bright, bright as the Sun.\nThe necklace forms an armor of light around your body, and a sword heavy as a boulder,\n yet this mysterious power of yours ables you to carry it.\n\"Oh you're still alive? That doesn't matter. I will show you the true power of the Arrow of Evil.\n");
 		_getch();
 		system("cls");
 		cutsceneCounter++;
@@ -859,7 +859,6 @@ void cutscenes() {
 	else if (cutsceneCounter == 11) {
 		system("cls");
 		typewriter("\"NO!!! THIS CANNOT BE! THE GREAT SAHM REFUSES TO DIE AT THE HANDS OF SUCH FILTH LIKE YOURSELF...\"\n\n\"Dying at my hands itself is an eternal punishment for you. Not one death will go unaccounted for.\"\n\n");
-		_getch();
 		typewriter("\"Not One.\"", 500);
 		_getch();
 		system("cls");
