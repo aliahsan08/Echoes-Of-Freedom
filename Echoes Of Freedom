@@ -836,7 +836,7 @@ void cutscenes() {
 		typewriter("As I have of countless of your kind.\"", 200);
 		_getch();
 		system("cls");
-		cutsceneCounter++;
+		cutsceneCounter+=2;
 	}
 	else if (cutsceneCounter == 10) {
 		system("cls");
