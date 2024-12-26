@@ -292,8 +292,8 @@ int main()
 		level0();
 		cutscenes();
 		bossVictory = bossBattle();
-		if(bossVictory == true)
-		cutscenes();
+		if (bossVictory == true)
+			cutscenes();
 	}
 	bossBattleCounter = 0;
 	while (level == 1) {
@@ -301,7 +301,7 @@ int main()
 		cutscenes();
 		bossVictory = bossBattle();
 		if (bossVictory == true)
-		cutscenes();
+			cutscenes();
 	}
 	bossBattleCounter = 0;
 	while (level == 2) {
@@ -321,7 +321,7 @@ int main()
 		cutscenes();
 		bossVictory = bossBattle();
 		if (bossVictory == true)
-		cutscenes();
+			cutscenes();
 	}
 	bossBattleCounter = 0;
 	while (level == 4) {
@@ -331,7 +331,7 @@ int main()
 		cutscenes();
 		bossVictory = bossBattle();
 		if (bossVictory == true)
-		cutscenes();
+			cutscenes();
 	}
 }
 
@@ -714,7 +714,7 @@ void cutscenes() {
 	}
 	else if (cutsceneCounter == 2) {
 		system("cls");
-		typewriter("Blood.\n",500);
+		typewriter("Blood.\n", 500);
 		typewriter("You're soaked in the blood of the monster. It disgusts you.\nYou're feeling overwhelmed.\nYou feel like the best escape from this hell is to...");
 		typewriter("Kill yourself...", 500);
 		_getch();
@@ -836,7 +836,7 @@ void cutscenes() {
 		typewriter("As I have of countless of your kind.\"", 200);
 		_getch();
 		system("cls");
-		cutsceneCounter+=2;
+		cutsceneCounter += 2;
 	}
 	else if (cutsceneCounter == 10) {
 		system("cls");
@@ -1370,31 +1370,6 @@ void level4() {
 			else {
 				typewriter("Nothing happened.The gemstone doesn't seem complete...\n\n");
 			}
-		}
-		if (map4[2][3] == playerCursor) {
-			typewriter("You come across some writing inscribed into the wall. It reads as follows:\n\n");
-			_getch();
-			system("cls");
-			mainSound.stop();
-			sf::SoundBuffer wisdomBuffer;
-			if (!wisdomBuffer.loadFromFile("NaeemZafarWisdom.ogg")) {
-				cerr << "Error loading NaeemZafarWisdom audio!" << endl;
-				return;
-			}
-
-			sf::Sound NaeemZafarpookie;
-			NaeemZafarpookie.setBuffer(wisdomBuffer);
-			NaeemZafarpookie.play();
-
-			typewriter("\"You always try to find out where are the eyes.\n You never look for the nose inside the mountain.\"\n You are unable to comprehend such wisdom.\n");
-
-			// Wait for the audio to finish (optional)
-			while (NaeemZafarpookie.getStatus() == sf::Sound::Playing) {
-				this_thread::sleep_for(chrono::milliseconds(100));
-			}
-
-			mainSound.play();
-			system("cls");
 		}
 		printMap();
 		movement();
