@@ -3,10 +3,10 @@ Project Title
 Echoes of Freedom
 
 Group Members
-Wasiq Amir (507505)
-Zayna Qasim (501288)
-Ali Ahsan (501323)
-Fatima Nisar (504590)
+1.Wasiq Amir (507505)
+2.Zayna Qasim (501288)
+3.Ali Ahsan (501323)
+4.Fatima Nisar (504590)
 
 Project Description
 "Echoes of Freedom" is a text-based adventure game set in a captivating fantasy world. 
