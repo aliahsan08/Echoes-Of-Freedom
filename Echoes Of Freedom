@@ -12,7 +12,7 @@
 using namespace std;
 const string playerCursor = " X ";
 const int mapSizeY = 8, mapSizeX = 21;
-int level = 2;
+int level = 0;
 int bossBattleCounter = 0;
 int cutsceneCounter = 0;
 bool skipBattle = false;
@@ -766,22 +766,26 @@ void cutscenes() {
 			typewriter("The ghoul hasn't seemed to notice you. You can backstab it and move on through your way.\nDo you wish to kill it?(y/n)\n");
 			char choice1 = 'x';
 			do {
+				choice1 = _getch();
 				if (choice1 == 'n') {
 					typewriter("You drop your sword. The sound of it attracts the attention of the ghoul.\nThe ghoul thinks you're an enemy and takes stance.\nAs it moves, you're able to see a kid ghoul that seems wounded.\n");
 					_getch();
 					system("cls");
 					if (stoi(inventory[1][1]) > 0) {
 						typewriter("Are you willing to offer your healing potion to the ghoul?(y/n)\n");
-						char choice2 = _getch();
-						if (choice2 == 'y') {
-							typewriter("You offer the health potion to the ghoul. It picks up the potion with some hesitation, and treats her child with it.\nThe kid ghoul seems to recover. The mother ghoul stops crying.\nIt drops a longsword with the name \"Marid\" on it as a gesture of gratitude. That seems to be the name of the ghoul.\n The sword will increase the damage you deal to enemies.\nMarid takes her child with her into the pond and disappears. You continue to proceed\n");
-							player.ATK += 50;
-							skipBattle = true;
-						}
-						else {
-							typewriter("The ghoul attacks you off guard! You hurry to pick up the sword to fight back\n");
-							player.HP -= 50;
-						}
+						char choice2;
+						do {
+							choice2 = _getch();
+							if (choice2 == 'y') {
+								typewriter("You offer the health potion to the ghoul. It picks up the potion with some hesitation, and treats her child with it.\nThe kid ghoul seems to recover. The mother ghoul stops crying.\nIt drops a longsword with the name \"Marid\" on it as a gesture of gratitude. That seems to be the name of the ghoul.\n The sword will increase the damage you deal to enemies.\nMarid takes her child with her into the pond and disappears. You continue to proceed\n");
+								player.ATK += 50;
+								skipBattle = true;
+							}
+							else {
+								typewriter("The ghoul attacks you off guard! You hurry to pick up the sword to fight back\n");
+								player.HP -= 50;
+							}
+						} while (choice2 != 'y' && choice2 != 'Y' && choice2 != 'n' && choice2 != 'N');
 					}
 					else {
 						typewriter("The ghoul attacks you off guard! You hurry to pick up the sword to fight back\n");
@@ -792,7 +796,7 @@ void cutscenes() {
 					typewriter("The ghoul dodges you completely and counter attacks! You take damage.\n");
 					player.HP -= 100;
 				}
-			} while (choice1 != 'y' || choice1 != 'Y' || choice1 != 'n' || choice1 != 'N');
+			} while (choice1 != 'y' && choice1 != 'Y' && choice1 != 'n' && choice1 != 'N');
 		}
 		else {
 			typewriter("You sense a creature, but you arent't able to see it properly. You attack it instinctively before it attacks you\n");
@@ -908,7 +912,7 @@ void level0() {
 					addItem("Key", 1);
 					levelitems0.keys++;
 				}
-			} while (choice != 'y' || choice != 'Y' || choice != 'n' || choice != 'N');
+			} while (choice != 'y' && choice != 'Y' && choice != 'n' && choice != 'N');
 		}
 		if (map0[2][2] == playerCursor) // Door 1 logic
 		{
@@ -998,7 +1002,7 @@ void level1() {
 					typewriter("It appears that the wall served as a portal.\n");
 					_getch();
 				}
-			} while (choice != 'y' || choice != 'Y' || choice != 'n' || choice != 'N');
+			} while (choice != 'y' && choice != 'Y' && choice != 'n' && choice != 'N');
 		}
 		if (map1[1][15] == playerCursor) {
 			typewriter("There's some writing on this wall...although it makes only as much sense as\nDiscrete Math lectures.\n");
@@ -1132,7 +1136,7 @@ void level2() {
 					typewriter("The portal displays a world where NxST actually has logical policies.\nIt brings tears to your eyes.\n\n");
 					_getch;
 				}
-			} while (choice != 'y' || choice != 'Y' || choice != 'n' || choice != 'N');
+			} while (choice != 'y' && choice != 'Y' && choice != 'n' && choice != 'N');
 		}
 		if (map2[1][8] == playerCursor && medalCounter == 0) {
 			typewriter("You found a medal on the floor. It says \"Ghoul's Medal\"\n");
