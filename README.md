@@ -1,14 +1,20 @@
 README.md for Echoes of Freedom
-Project Title
+
+Project Title:
 Echoes of Freedom
 
 Group Members 
+
 1.Wasiq Amir (507505) 
+
 2.Zayna Qasim (501288) 
+
 3.Ali Ahsan (501323) 
+
 4.Fatima Nisar (504590) 
 
-Project Description
+Project Description:
+
 "Echoes of Freedom" is a text-based adventure game set in a captivating fantasy world. 
 Players take on the role of a rebellious prisoner who escapes captivity to overthrow a tyrant ruler. 
 Combining exploration, turn-based combat, and narrative-driven progression, this game offers players a thrilling experience filled with strategic challenges and meaningful decisions.
@@ -41,6 +47,7 @@ Collect, use, and manage items like keys, potions, and special artifacts.
 Audio and Visuals:
 Dynamic background music and sound effects.
 SFML-based fullscreen graphics for title and premise screens.
+
 
 Technical Architecture
 
