@@ -2,11 +2,11 @@ README.md for Echoes of Freedom
 Project Title
 Echoes of Freedom
 
-Group Members
-1.Wasiq Amir (507505)
-2.Zayna Qasim (501288)
-3.Ali Ahsan (501323)
-4.Fatima Nisar (504590)
+Group Members 
+1.Wasiq Amir (507505) 
+2.Zayna Qasim (501288) 
+3.Ali Ahsan (501323) 
+4.Fatima Nisar (504590) 
 
 Project Description
 "Echoes of Freedom" is a text-based adventure game set in a captivating fantasy world. 
@@ -71,25 +71,13 @@ Deploying and Running Echoes of Freedom
 Download the Zip File:
 Download the provided Echoes_of_Freedom.zip file and extract it to your desired directory.
 
-Opening the Project:
-Inside the extracted folder, locate the Visual Studio solution file Echoes_of_Freedom.sln.
-Double-click on the .sln file to open it in Visual Studio.
-
-Installing Dependencies:
-Ensure SFML is configured for the project:
-The SFML library folder is already included in the zip file.
-The project properties are pre-configured to link against the SFML libraries.
-
-Running the Game:
-Set the build configuration to Debug or Release in the Visual Studio toolbar.
-Click the Start button (green triangle) or press F5 to build and run the project.
+Opening the .exe:
+Open the executable file (.exe) and play the game. All the necessary components and libraries have already been integrated
 
 Playing the Game:
 Ensure your system volume is turned up for an immersive experience.
 Follow the on-screen instructions to navigate the game.
 
-Alternative:
-	Go to the release folder and run the .exe file for simple execution.
 
 
 Detailed Documentation
