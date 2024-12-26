@@ -733,7 +733,7 @@ void cutscenes() {
 			else if (choice == "live") {
 				typewriter("Even with everything you went through, you decide to keep pushing.\nYou realize you have a greater purpose to fulfill. You decide to keep moving forward.\nTruly commendable\n");
 			}
-		} while (choice != "live" || choice != "die");
+		} while (choice != "live" && choice != "die");
 		_getch();
 		system("cls");
 		cutsceneCounter++;
