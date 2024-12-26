@@ -153,7 +153,7 @@ vector<ch> enemies =
 	ch("Karkadann", 800, 180, 300,500,1),
 	ch("King's Knight", 1000, 350, 200,500,1)
 };
-ch player = ch("Player", 250, 60, 300, 0, 1);
+ch player = ch("Player", 250, 6000, 300, 0, 1);
 LI levelitems0 = LI(0, 0, 0, 0);
 LI levelitems1 = LI(0, 0, 0, 0);
 LI levelitems2 = LI(0, 0, 0, 0);
@@ -309,11 +309,9 @@ int main()
 		cutscenes();
 		if (skipBattle == false) {
 			bossVictory = bossBattle();
-			if (bossVictory == true)
-			cutscenes();
-		}
-		else {
-			cutsceneCounter++;
+			if (bossVictory == true) {
+				cutscenes();
+			}
 		}
 	}
 	skipBattle = false;
@@ -717,15 +715,15 @@ void cutscenes() {
 	else if (cutsceneCounter == 2) {
 		system("cls");
 		typewriter("Blood.\n",500);
-		typewriter("You're soaked in the blood on the monster. It disgusts you.\nYou're feeling overwhelmed.\nYou feel like the best escape from this hell is to...");
+		typewriter("You're soaked in the blood of the monster. It disgusts you.\nYou're feeling overwhelmed.\nYou feel like the best escape from this hell is to...");
 		typewriter("Kill yourself...", 500);
 		_getch();
 		system("cls");
 		typewriter("What do you choose?\n-Live\n-Die\n");
 		string choice;
-		cin >> choice;
 		toLowerCase(choice);
 		do {
+			cin >> choice;
 			if (choice == "die") {
 				typewriter("You use your sword to slit your throat. You're struggling to breath anymore.\nYou feel your body lose its weight, as you succumb to eternal slumber..\n");
 				level = 100;
@@ -764,10 +762,10 @@ void cutscenes() {
 			_getch();
 			system("cls");
 			typewriter("The ghoul hasn't seemed to notice you. You can backstab it and move on through your way.\nDo you wish to kill it?(y/n)\n");
-			char choice1 = 'x';
+			char choice1;
 			do {
 				choice1 = _getch();
-				if (choice1 == 'n') {
+				if (choice1 == 'n' || choice1 == 'N') {
 					typewriter("You drop your sword. The sound of it attracts the attention of the ghoul.\nThe ghoul thinks you're an enemy and takes stance.\nAs it moves, you're able to see a kid ghoul that seems wounded.\n");
 					_getch();
 					system("cls");
@@ -776,12 +774,14 @@ void cutscenes() {
 						char choice2;
 						do {
 							choice2 = _getch();
-							if (choice2 == 'y') {
+							if (choice2 == 'y' || choice2 == 'Y') {
 								typewriter("You offer the health potion to the ghoul. It picks up the potion with some hesitation, and treats her child with it.\nThe kid ghoul seems to recover. The mother ghoul stops crying.\nIt drops a longsword with the name \"Marid\" on it as a gesture of gratitude. That seems to be the name of the ghoul.\n The sword will increase the damage you deal to enemies.\nMarid takes her child with her into the pond and disappears. You continue to proceed\n");
 								player.ATK += 50;
 								skipBattle = true;
+								level++;
+								cutsceneCounter++;
 							}
-							else {
+							else if (choice2 == 'n' || choice2 == 'N') {
 								typewriter("The ghoul attacks you off guard! You hurry to pick up the sword to fight back\n");
 								player.HP -= 50;
 							}
@@ -792,7 +792,7 @@ void cutscenes() {
 						player.HP -= 50;
 					}
 				}
-				else {
+				else if (choice1 == 'y' || choice1 == 'Y') {
 					typewriter("The ghoul dodges you completely and counter attacks! You take damage.\n");
 					player.HP -= 100;
 				}
@@ -810,6 +810,7 @@ void cutscenes() {
 		typewriter("monster..?", 500);
 		_getch();
 		system("cls");
+		cutsceneCounter++;
 	}
 	else if (cutsceneCounter == 7) {
 		system("cls");
@@ -905,7 +906,7 @@ void level0() {
 			char choice = 'x';
 			do {
 				choice = _getch();
-				if (choice == 'y' or choice == 'Y') {
+				if (choice == 'y' || choice == 'Y') {
 					typewriter("You knocked the guard down and stole his key.\nYou also decide to steal his armor and his sword\n\n");
 					_getch();
 					system("cls");
@@ -992,7 +993,7 @@ void level1() {
 		}
 		if (map1[6][7] == playerCursor) {
 			typewriter("This wall seems...weird. Do you want to interact with it?(y/n)\n");
-			char choice = 'x';
+			char choice;
 			do {
 				choice = _getch();
 				if (choice == 'y' || choice == 'Y') {
@@ -1128,7 +1129,7 @@ void level2() {
 
 		if (map2[1][19] == playerCursor) {
 			typewriter("\"Turning this portal on will display an ideal world.\"\nDo you wish to turn it on?(y/n)");
-			char choice = 'x';
+			char choice;
 			system("cls");
 			do {
 				choice = _getch();
@@ -1255,9 +1256,9 @@ void level4() {
 		system("cls");
 		if (map4[0][10] == playerCursor) {
 			string choice;
+			system("cls");
+			typewriter("You have found an opening to the outside world. You can either leave, or make the King pay for his actions. What do you choose?\n-Stay\n-Leave\n");
 			do {
-				system("cls");
-				typewriter("You have found an opening to the outside world. You can either leave, or make the King pay for his actions. What do you choose?\n-Stay\n-Leave\n");
 				cin >> choice;
 				toLowerCase(choice);
 			} while (choice != "stay" && choice != "leave");
