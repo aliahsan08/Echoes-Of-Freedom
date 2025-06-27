@@ -5,13 +5,13 @@ Echoes of Freedom
 
 Group Members 
 
-1.Wasiq Amir (507505) 
+1.Wasiq Amir 
 
-2.Zayna Qasim (501288) 
+2.Zayna Qasim 
 
-3.Ali Ahsan (501323) 
+3.Ali Ahsan 
 
-4.Fatima Nisar (504590) 
+4.Fatima Nisar
 
 Project Description:
 
